@@ -22,6 +22,10 @@ body {
 	position: relative;
 }
 
+.underline{
+  font-weight: bold;
+}
+
 .key {
   background-color: #333;
   font-size: 1.8rem;
