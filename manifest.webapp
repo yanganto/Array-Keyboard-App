@@ -6,7 +6,7 @@
   "launch_path": "/settings.html",
   "developer": {
     "name": "Antonio",
-    "url": "https://github.com/mozilla-b2g/gaia"
+    "url": "https://github.com/Array-Keyboard-App.git"
   },
   "permissions": {
     "input": {
@@ -14,7 +14,7 @@
     }
   },
   "inputs": {
-    "lol": {
+    "array": {
       "launch_path": "/index.html",
       "name": "Array30",
       "description": "Array 30 layout",
