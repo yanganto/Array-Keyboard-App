@@ -8,11 +8,19 @@ var partKeys;
 var selectionMod = false;
 var selections = "";
 var selectionIndex = 0;
+var buffer;
 
 function init() {
   keyboardElement = document.getElementById('keyboard');
   selectKeys = document.querySelectorAll('.key-select');
   partKeys = document.querySelectorAll('.key-part');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/ar30.data', true);
+  xhr.responseType = 'arraybuffer';
+  xhr.onload = function(e){
+    buffer = xhr.response;
+  }
+  xhr.send();
 
   window.navigator.mozInputMethod.oninputcontextchange = function() {
     inputContext = navigator.mozInputMethod.inputcontext;
