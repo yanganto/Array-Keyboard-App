@@ -9,6 +9,9 @@ var selectionMod = false;
 var selections = "";
 var selectionIndex = 0;
 var buffer;
+var bufferIndex = 0;
+var bufferKey = new ArrayBuffer(3);
+
 
 function init() {
   keyboardElement = document.getElementById('keyboard');
@@ -77,15 +80,15 @@ function init() {
   var sendKeyElement = document.getElementById('sendKey');
   sendKeyElement.addEventListener('click', function sendKeyHandler() {
     if (indexString){
-			if(selectionMod){
-				nextSelection();	
-			}else{
-				var word = searchWords( true );
-				sendKey( word.charCodeAt(0) );
-				resetSelectKey();
-				indexString = "";
-				renewKeyGroup();  
-			}
+      if(selectionMod){
+        nextSelection();  
+      }else{
+        var word = searchWords( true );
+        sendKey( word.charCodeAt(0) );
+        resetSelectKey();
+        indexString = "";
+        renewKeyGroup();  
+      }
     }else{
       sendKey(32);  
     }
@@ -102,9 +105,9 @@ function init() {
       indexString = "";
       renewKeyGroup();
       resetSelectKey();
-			if(selectionMod) {
-				exitSelectionMode();
-			}
+      if(selectionMod) {
+        exitSelectionMode();
+      }
     }else{
       sendKey(8);
     }
@@ -159,37 +162,37 @@ function init() {
 function selectKeyHandler( e ) {
   if( e.target.innerHTML){
     if ( [ '，', '（', '＃', '＋', '♀', '＄', '▁', '①', 'Α', 'ㄅ'].indexOf(e.target.innerHTML) > -1){
-			selections = symbolSelections(e.target.innerHTML);
-			enterSelectionMode();
-		}else{ 
-			sendKey( e.target.innerHTML.charCodeAt(0) );
-			indexString = "";
-			renewKeyGroup();
-			if (selectionMod){
-				exitSelectionMode();		
-			}else{
-			  resetSelectKey();
-			}
-		}
-	}
+      selections = symbolSelections(e.target.innerHTML);
+      enterSelectionMode();
+    }else{ 
+      sendKey( e.target.innerHTML.charCodeAt(0) );
+      indexString = "";
+      renewKeyGroup();
+      if (selectionMod){
+        exitSelectionMode();    
+      }else{
+        resetSelectKey();
+      }
+    }
+  }
 }
 
 function partKeyHandler(e) {
-	if ( enMod ) {
-		sendKey(e.target.innerHTML.charCodeAt(0));
-	}else{
-			if ( e.target.innerHTML == 'i' && indexString.length < 5 || indexString.length < 4 ) {
-			indexString += e.target.innerHTML;
-			var words = searchWords( false );
-			for ( var i = 0; i< selectKeys.length; i++) {
-				selectKeys[i].innerHTML = words[i] || '';
-			} 
-		}else{
-			indexString = "";
-			resetSelectKey();
-		}
-		renewKeyGroup();
-	}
+  if ( enMod ) {
+    sendKey(e.target.innerHTML.charCodeAt(0));
+  }else{
+      if ( e.target.innerHTML == 'i' && indexString.length < 5 || indexString.length < 4 ) {
+      indexString += e.target.innerHTML;
+      var words = searchWords( false );
+      for ( var i = 0; i< selectKeys.length; i++) {
+        selectKeys[i].innerHTML = words[i] || '';
+      } 
+    }else{
+      indexString = "";
+      resetSelectKey();
+    }
+    renewKeyGroup();
+  }
 }
 
 function resizeWindow() {
@@ -197,12 +200,35 @@ function resizeWindow() {
 }
 
 function renewKeyGroup(){
-  var showKeyGroup = "";
-  for ( i = 0; i < indexString.length; i++) {
-    showKeyGroup += map( indexString[i] );
+  i = indexString.length;
+  var keyNum = "qwertyuiopasdfghjkl;zxcvbnm,./".indexOf(indexString[i-1]) + 1;
+  var uint8view = new Uint8Array(bufferKey, 0, 3);
+  var firstAndSecondBytes = new Uint16Array(bufferKey, 0, 1);
+  switch(i){
+    case 0:
+      firstAndSecondBytes[0] = 0
+      uint8view[2] = 0;
+      document.getElementById('sendKey').innerHTML = "";
+      return;
+    case 1:
+      uint8view[0] = keyNum;
+      break;
+    case 2:
+      firstAndSecondBytes[0] = (uint8view[0] + keyNum * 32);
+      break;
+    case 3:
+      uint8view[1] = uint8view[1] | (keyNum * 8);
+      break;
+    case 4:
+      uint8view[2] = keyNum;
+      break;
+    case 5:
+      uint8view[2] += keyNum * 4;
+       break; 
   }
-  document.getElementById('sendKey').innerHTML = showKeyGroup;
+  document.getElementById('sendKey').innerHTML += map(indexString[i-1]);
 }
+
 
 function map( enChar ){
   var arrayKey="";
@@ -316,23 +342,23 @@ function searchWords( space ){
 
 function enterSelectionMode(){
   selectionMod = true;
-	selectKeys = document.querySelectorAll('.key-select, .key-part'); 
+  selectKeys = document.querySelectorAll('.key-select, .key-part'); 
   selectionIndex = 0;
-	for( var i = 0; i < partKeys.length; i++){
-		partKeys[i].removeEventListener('click', partKeyHandler);
-		partKeys[i].addEventListener('click', selectKeyHandler);
-	}
+  for( var i = 0; i < partKeys.length; i++){
+    partKeys[i].removeEventListener('click', partKeyHandler);
+    partKeys[i].addEventListener('click', selectKeyHandler);
+  }
   for( var i = 0; i < selectKeys.length; i++){ 
     selectKeys[i].innerHTML = selections[i] || "";
   }
   selectionIndex += 40;
-	document.getElementById('sendKey').innerHTML = "▽";
+  document.getElementById('sendKey').innerHTML = "▽";
 }
 
 function nextSelection(){
-	if ( selectionIndex > selections.length) {
-		selectionIndex = 0;
-	}
+  if ( selectionIndex > selections.length) {
+    selectionIndex = 0;
+  }
   for( var i = 0; i < selectKeys.length; i++){ 
     selectKeys[i].innerHTML = selections[i + selectionIndex ] || "";
   }
@@ -341,15 +367,15 @@ function nextSelection(){
 function exitSelectionMode(){
   selectionMod = false;
   selectKeys = document.querySelectorAll('.key-select');
-	for( var i = 0; i < partKeys.length; i++){
-		partKeys[i].removeEventListener('click', selectKeyHandler);
-		partKeys[i].addEventListener('click', partKeyHandler);
-	}
-	for ( var i = 0; i < partKeys.length; i++){
-		partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i]
-	}
-	resetSelectKey();
-	document.getElementById('sendKey').innerHTML =  '';
+  for( var i = 0; i < partKeys.length; i++){
+    partKeys[i].removeEventListener('click', selectKeyHandler);
+    partKeys[i].addEventListener('click', partKeyHandler);
+  }
+  for ( var i = 0; i < partKeys.length; i++){
+    partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i]
+  }
+  resetSelectKey();
+  document.getElementById('sendKey').innerHTML =  '';
 }
 
 function quickSearch( ch ) {
@@ -418,7 +444,7 @@ function quickSearch( ch ) {
 }
 
 function symbolSelections ( ch ){
-	switch(ch){
+  switch(ch){
     case '，':
       return "，、。．‧；：？！︰…‥﹐﹑﹒·﹔﹕﹖﹗｜–︱—︳╴︴﹏";
     case '（':
@@ -439,7 +465,7 @@ function symbolSelections ( ch ){
       return "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω";
     case 'ㄅ':
       return "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ˙ˉˊˇˋ";
-	}
+  }
 } 
 
 window.addEventListener('load', init);
