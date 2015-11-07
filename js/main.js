@@ -85,11 +85,14 @@ function init() {
       }else{
         var result = searchWords( true );
         if (typeof result == "number"){
-            sendKey( result );
+          sendKey( result );
+          resetSelectKey();
+          indexString = "";
+          renewKeyGroup();  
+        }else{
+          selections = result;
+          enterSelectionMode();
         }
-        resetSelectKey();
-        indexString = "";
-        renewKeyGroup();  
       }
     }else{
       sendKey(32);  
@@ -209,6 +212,7 @@ function renewKeyGroup(){
     case 0:
       firstAndSecondBytes[0] = 0
       key_uint8view[2] = 0;
+      bufferIndex = 0;
       document.getElementById('sendKey').innerHTML = "";
       return;
     case 1:
@@ -256,33 +260,43 @@ function resetSelectKey() {
 }
 
 function searchWords( space ){
+  var candidates = [];
   if (space){
     for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
-      var table_uint8view = new Uint8Array(buffer, i*5, 3);
+          var table_uint8view = new Uint8Array(buffer, i*5, 3);
       if( key_uint8view[0] == table_uint8view[0] &&
           key_uint8view[1] == table_uint8view[1] &&
           key_uint8view[2] == table_uint8view[2]){
         var uint16view = new Uint16Array(buffer.slice(i*5 + 3, i*5 + 5));
-        return uint16view[0];
+        candidates.push(uint16view[0]);
+      }else{
+        if(candidates.length > 0){
+          break; 
+        }
       }
     }
+    if (candidates.length == 1){
+      return candidates[0];
+    }else{
+      candidates = candidates.map(function(e){return String.fromCharCode(e)});
+    }
+  }else{
+    switch(indexString.length){
+      case 1:
+        candidates = quickSearch(indexString);
+        break;
+      case 2:
+        candidates = ['炎','','米','','','','榮','','',''];
+        break;
+      case 3:
+        candidates = ['','','米','','','','榮','','',''];
+        break;
+      default:
+        candidates = ['','','','','','','榮','','',''];
+        break;
+    }
   } 
-  var mock =[];
-  switch( indexString.length){
-    case 1:
-      mock = quickSearch(indexString);
-      break;
-    case 2:
-      mock = ['炎','','米','','','','榮','','',''];
-      break;
-    case 3:
-      mock = ['','','米','','','','榮','','',''];
-      break;
-    default:
-      mock = ['','','','','','','榮','','',''];
-      break;
-  }
-  return mock;
+  return candidates;
 }
 
 function enterSelectionMode(){
