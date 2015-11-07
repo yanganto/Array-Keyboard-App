@@ -11,7 +11,7 @@ var selectionIndex = 0;
 var buffer;
 var bufferIndex = 0;
 var bufferKey = new ArrayBuffer(3);
-
+var key_uint8view = new Uint8Array(bufferKey, 0, 3);
 
 function init() {
   keyboardElement = document.getElementById('keyboard');
@@ -83,8 +83,10 @@ function init() {
       if(selectionMod){
         nextSelection();  
       }else{
-        var word = searchWords( true );
-        sendKey( word.charCodeAt(0) );
+        var result = searchWords( true );
+        if (typeof result == "number"){
+            sendKey( result );
+        }
         resetSelectKey();
         indexString = "";
         renewKeyGroup();  
@@ -202,33 +204,124 @@ function resizeWindow() {
 function renewKeyGroup(){
   i = indexString.length;
   var keyNum = "qwertyuiopasdfghjkl;zxcvbnm,./".indexOf(indexString[i-1]) + 1;
-  var uint8view = new Uint8Array(bufferKey, 0, 3);
   var firstAndSecondBytes = new Uint16Array(bufferKey, 0, 1);
   switch(i){
     case 0:
       firstAndSecondBytes[0] = 0
-      uint8view[2] = 0;
+      key_uint8view[2] = 0;
       document.getElementById('sendKey').innerHTML = "";
       return;
     case 1:
-      uint8view[0] = keyNum;
+      key_uint8view[0] = keyNum;
       break;
     case 2:
-      firstAndSecondBytes[0] = (uint8view[0] + keyNum * 32);
+      firstAndSecondBytes[0] = (key_uint8view[0] + keyNum * 32);
       break;
     case 3:
-      uint8view[1] = uint8view[1] | (keyNum * 8);
+      key_uint8view[1] = key_uint8view[1] | (keyNum * 8);
       break;
     case 4:
-      uint8view[2] = keyNum;
+      key_uint8view[2] = keyNum;
       break;
     case 5:
-      uint8view[2] += keyNum * 4;
+      key_uint8view[2] += keyNum * 4;
        break; 
   }
   document.getElementById('sendKey').innerHTML += map(indexString[i-1]);
 }
 
+
+function sendKey(keyCode) {
+  switch (keyCode) {
+  case KeyEvent.DOM_VK_BACK_SPACE:
+  case KeyEvent.DOM_VK_RETURN:
+    if (inputContext) {
+      inputContext.sendKey(keyCode, 0, 0);
+    }
+    break;
+
+  default:
+    if (inputContext) {
+      inputContext.sendKey(0, keyCode, 0);
+    }
+    break;
+  }
+}
+
+function resetSelectKey() {
+  for ( i = 0; i< selectKeys.length; i++) {
+    selectKeys[i].innerHTML = i + 1;
+  } 
+  selectKeys[9].innerHTML = 0;
+}
+
+function searchWords( space ){
+  if (space){
+    for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
+      var table_uint8view = new Uint8Array(buffer, i*5, 3);
+      if( key_uint8view[0] == table_uint8view[0] &&
+          key_uint8view[1] == table_uint8view[1] &&
+          key_uint8view[2] == table_uint8view[2]){
+        var uint16view = new Uint16Array(buffer.slice(i*5 + 3, i*5 + 5));
+        return uint16view[0];
+      }
+    }
+  } 
+  var mock =[];
+  switch( indexString.length){
+    case 1:
+      mock = quickSearch(indexString);
+      break;
+    case 2:
+      mock = ['炎','','米','','','','榮','','',''];
+      break;
+    case 3:
+      mock = ['','','米','','','','榮','','',''];
+      break;
+    default:
+      mock = ['','','','','','','榮','','',''];
+      break;
+  }
+  return mock;
+}
+
+function enterSelectionMode(){
+  selectionMod = true;
+  selectKeys = document.querySelectorAll('.key-select, .key-part'); 
+  selectionIndex = 0;
+  for( var i = 0; i < partKeys.length; i++){
+    partKeys[i].removeEventListener('click', partKeyHandler);
+    partKeys[i].addEventListener('click', selectKeyHandler);
+  }
+  for( var i = 0; i < selectKeys.length; i++){ 
+    selectKeys[i].innerHTML = selections[i] || "";
+  }
+  selectionIndex += 40;
+  document.getElementById('sendKey').innerHTML = "▽";
+}
+
+function nextSelection(){
+  if ( selectionIndex > selections.length) {
+    selectionIndex = 0;
+  }
+  for( var i = 0; i < selectKeys.length; i++){ 
+    selectKeys[i].innerHTML = selections[i + selectionIndex ] || "";
+  }
+  selectionIndex += 40;
+}
+function exitSelectionMode(){
+  selectionMod = false;
+  selectKeys = document.querySelectorAll('.key-select');
+  for( var i = 0; i < partKeys.length; i++){
+    partKeys[i].removeEventListener('click', selectKeyHandler);
+    partKeys[i].addEventListener('click', partKeyHandler);
+  }
+  for ( var i = 0; i < partKeys.length; i++){
+    partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i]
+  }
+  resetSelectKey();
+  document.getElementById('sendKey').innerHTML =  '';
+}
 
 function map( enChar ){
   var arrayKey="";
@@ -294,88 +387,6 @@ function map( enChar ){
     case '/':
       return "0v";
   }
-}
-
-function sendKey(keyCode) {
-  switch (keyCode) {
-  case KeyEvent.DOM_VK_BACK_SPACE:
-  case KeyEvent.DOM_VK_RETURN:
-    if (inputContext) {
-      inputContext.sendKey(keyCode, 0, 0);
-    }
-    break;
-
-  default:
-    if (inputContext) {
-      inputContext.sendKey(0, keyCode, 0);
-    }
-    break;
-  }
-}
-
-function resetSelectKey() {
-  for ( i = 0; i< selectKeys.length; i++) {
-    selectKeys[i].innerHTML = i + 1;
-  } 
-  selectKeys[9].innerHTML = 0;
-}
-
-function searchWords( space ){
-  if (space) return '榮';
-  var mock =[];
-  switch( indexString.length){
-    case 1:
-      mock = quickSearch(indexString);
-      break;
-    case 2:
-      mock = ['炎','','米','','','','榮','','',''];
-      break;
-    case 3:
-      mock = ['','','米','','','','榮','','',''];
-      break;
-    default:
-      mock = ['','','','','','','榮','','',''];
-      break;
-  }
-  return mock;
-}
-
-function enterSelectionMode(){
-  selectionMod = true;
-  selectKeys = document.querySelectorAll('.key-select, .key-part'); 
-  selectionIndex = 0;
-  for( var i = 0; i < partKeys.length; i++){
-    partKeys[i].removeEventListener('click', partKeyHandler);
-    partKeys[i].addEventListener('click', selectKeyHandler);
-  }
-  for( var i = 0; i < selectKeys.length; i++){ 
-    selectKeys[i].innerHTML = selections[i] || "";
-  }
-  selectionIndex += 40;
-  document.getElementById('sendKey').innerHTML = "▽";
-}
-
-function nextSelection(){
-  if ( selectionIndex > selections.length) {
-    selectionIndex = 0;
-  }
-  for( var i = 0; i < selectKeys.length; i++){ 
-    selectKeys[i].innerHTML = selections[i + selectionIndex ] || "";
-  }
-  selectionIndex += 40;
-}
-function exitSelectionMode(){
-  selectionMod = false;
-  selectKeys = document.querySelectorAll('.key-select');
-  for( var i = 0; i < partKeys.length; i++){
-    partKeys[i].removeEventListener('click', selectKeyHandler);
-    partKeys[i].addEventListener('click', partKeyHandler);
-  }
-  for ( var i = 0; i < partKeys.length; i++){
-    partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i]
-  }
-  resetSelectKey();
-  document.getElementById('sendKey').innerHTML =  '';
 }
 
 function quickSearch( ch ) {
