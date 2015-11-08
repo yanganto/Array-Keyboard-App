@@ -9,6 +9,7 @@ var selectionMod = false;
 var selections = "";
 var selectionIndex = 0;
 var buffer;
+var bufferQuick;
 var bufferIndex = 0;
 var bufferKey = new ArrayBuffer(3);
 var key_uint8view = new Uint8Array(bufferKey, 0, 3);
@@ -17,12 +18,19 @@ function init() {
   keyboardElement = document.getElementById('keyboard');
   selectKeys = document.querySelectorAll('.key-select');
   partKeys = document.querySelectorAll('.key-part');
+  var xhtQuick = new XMLHttpRequest();
+  xhtQuick.open('GET', '/ar30_quick.data', true);
+  xhtQuick.responseType = 'arraybuffer';
+  xhtQuick.onload = function(e){
+    bufferQuick= xhtQuick.response;
+  };
+  xhtQuick.send();
   var xhr = new XMLHttpRequest();
   xhr.open('GET', '/ar30.data', true);
   xhr.responseType = 'arraybuffer';
   xhr.onload = function(e){
     buffer = xhr.response;
-  }
+  };
   xhr.send();
 
   window.navigator.mozInputMethod.oninputcontextchange = function() {
@@ -186,8 +194,9 @@ function partKeyHandler(e) {
   if ( enMod ) {
     sendKey(e.target.innerHTML.charCodeAt(0));
   }else{
-      if ( e.target.innerHTML == 'i' && indexString.length < 5 || indexString.length < 4 ) {
+    if ( e.target.innerHTML == 'i' && indexString.length < 5 || indexString.length < 4 ) {
       indexString += e.target.innerHTML;
+      renewKeyGroup();
       var words = searchWords( false );
       for ( var i = 0; i< selectKeys.length; i++) {
         selectKeys[i].innerHTML = words[i] || '';
@@ -195,8 +204,8 @@ function partKeyHandler(e) {
     }else{
       indexString = "";
       resetSelectKey();
+      renewKeyGroup();
     }
-    renewKeyGroup();
   }
 }
 
@@ -210,7 +219,7 @@ function renewKeyGroup(){
   var firstAndSecondBytes = new Uint16Array(bufferKey, 0, 1);
   switch(i){
     case 0:
-      firstAndSecondBytes[0] = 0
+      firstAndSecondBytes[0] = 0;
       key_uint8view[2] = 0;
       bufferIndex = 0;
       document.getElementById('sendKey').innerHTML = "";
@@ -263,7 +272,7 @@ function searchWords( space ){
   var candidates = [];
   if (space){
     for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
-          var table_uint8view = new Uint8Array(buffer, i*5, 3);
+      var table_uint8view = new Uint8Array(buffer, i*5, 3);
       if( key_uint8view[0] == table_uint8view[0] &&
           key_uint8view[1] == table_uint8view[1] &&
           key_uint8view[2] == table_uint8view[2]){
@@ -278,21 +287,67 @@ function searchWords( space ){
     if (candidates.length == 1){
       return candidates[0];
     }else{
-      candidates = candidates.map(function(e){return String.fromCharCode(e)});
+      candidates = candidates.map(function(e){return String.fromCharCode(e);});
     }
   }else{
     switch(indexString.length){
       case 1:
         candidates = quickSearch(indexString);
+        for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
+          var table_uint8view = new Uint8Array(buffer, i*5, 3);
+          if( key_uint8view[0] == table_uint8view[0] & 31 ){
+              bufferIndex = i;
+              break;
+          }
+        }
         break;
       case 2:
-        candidates = ['炎','','米','','','','榮','','',''];
+        candidates = quickSearch(indexString);
+        for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
+          var table_uint8view = new Uint8Array(buffer, i*5, 3);
+          if( key_uint8view[0] == table_uint8view[0] &&
+              key_uint8view[1] == table_uint8view[1] & 3 ){
+              bufferIndex = i;
+              break;
+          }
+        }
         break;
       case 3:
-        candidates = ['','','米','','','','榮','','',''];
+        for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
+          var table_uint8view = new Uint8Array(buffer, i*5, 3);
+          if( key_uint8view[0] == table_uint8view[0] &&
+              key_uint8view[1] == table_uint8view[1]){
+            var col = table_uint8view[2] % 10;
+            col = col == 0 ? 9 : col - 1;
+            if(candidates[col] == undefined){
+              var uint16view = new Uint16Array(buffer.slice(i*5 + 3, i*5 + 5));
+              candidates[col] = String.fromCharCode(uint16view[0]);
+            }
+          }else{
+            if(candidates.length > 0){
+              break; 
+            }
+          }
+        }
         break;
       default:
-        candidates = ['','','','','','','榮','','',''];
+        for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
+          var table_uint8view = new Uint8Array(buffer, i*5, 3);
+          if( key_uint8view[0] == table_uint8view[0] &&
+              key_uint8view[1] == table_uint8view[1] &&
+              key_uint8view[2] == table_uint8view[2] & 31){
+              if(candidates.length < 10){
+                var uint16view = new Uint16Array(buffer.slice(i*5 + 3, i*5 + 5));
+                candidates.push(String.fromCharCode(uint16view[0]));
+              }else{
+                break;
+              }
+          }else{
+            if(candidates.length > 0){
+              break; 
+            }
+          }
+        }
         break;
     }
   } 
@@ -331,7 +386,7 @@ function exitSelectionMode(){
     partKeys[i].addEventListener('click', partKeyHandler);
   }
   for ( var i = 0; i < partKeys.length; i++){
-    partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i]
+    partKeys[i].innerHTML = "qwertyuiopasdfghjkl;zxcvbnm,./"[i];
   }
   resetSelectKey();
   document.getElementById('sendKey').innerHTML =  '';
@@ -465,6 +520,23 @@ function quickSearch( ch ) {
       return ['口', '：', '；', '叫', '呢', '嗎', '吹', '別', '吃', '號'];
     case ',':
       return ['，', '火', '米', '精', '燈', '料', '鄰', '勞', '類', '營'];
+    default:
+      for(var i = 0; i < bufferQuick.byteLength / 22; i++ ){
+        var table_uint8view = new Uint8Array(bufferQuick, i*22, 2);
+        if( key_uint8view[0] == table_uint8view[0] &&
+            key_uint8view[1] == table_uint8view[1] ){
+          var uint16view = new Uint16Array(bufferQuick.slice(i*22 + 2, i*22 + 24));
+          var quick_words = [];
+          uint16view.forEach(function(e){
+            if(e==0){
+              quick_words.push('');
+            }else{
+              quick_words.push(String.fromCharCode(e));
+            }
+          });
+          return quick_words;
+        }
+      }
   }
 }
 
