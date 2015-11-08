@@ -112,32 +112,28 @@ function init() {
     sendKey(13);
   });
 
-  var deleteKey = document.getElementById('delete');
-  deleteKey.addEventListener('click', function deleteKeyHandler(){
-    if(indexString) {
-      indexString = "";
-      renewKeyGroup();
-      resetSelectKey();
-      if(selectionMod) {
-        exitSelectionMode();
-      }
-    }else{
-      sendKey(8);
-    }
-  });
-
   function listenerForSelectKey( i ) {
     selectKeys[i].addEventListener('click', selectKeyHandler);
   }
   for ( i = 0; i< selectKeys.length; i++) {
     listenerForSelectKey(i);
   }
+
+  var deleteKey = document.getElementById('delete');
   var deletePress= false;
   deleteKey.addEventListener('touchstart', function deleteLongHandler() {
     deletePress = true;
     var loop = setInterval( function loopDelete() {
-      sendKey(8);
-        window.navigator.vibrate(50);
+      if(indexString) {
+        indexString = "";
+        renewKeyGroup();
+        resetSelectKey();
+        if(selectionMod) {
+          exitSelectionMode();
+        }
+      }else{
+        sendKey(8);
+      }
       if( !deletePress) clearInterval( loop );
     }, 200);
   });
