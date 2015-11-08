@@ -97,7 +97,12 @@ function init() {
           resetSelectKey();
           indexString = "";
           renewKeyGroup();  
-        }else{
+        }else if(result == null){
+          indexString = "";
+          renewKeyGroup();  
+          resetSelectKey();
+        }
+        else{
           selections = result;
           enterSelectionMode();
         }
@@ -170,7 +175,8 @@ function init() {
 }
 function selectKeyHandler( e ) {
   if( e.target.innerHTML){
-    if ( [ '，', '（', '＃', '＋', '♀', '＄', '▁', '①', 'Α', 'ㄅ'].indexOf(e.target.innerHTML) > -1){
+    if ( [ '，', '（', '＃', '＋', '♀', '＄', '▁', '①', 'Α', 'ㄅ'].indexOf(e.target.innerHTML) > -1 &&
+         indexString == "w"){
       selections = symbolSelections(e.target.innerHTML);
       enterSelectionMode();
     }else{ 
@@ -282,7 +288,10 @@ function searchWords( space ){
     }
     if (candidates.length == 1){
       return candidates[0];
-    }else{
+    }else if (candidates.length == 0){
+      return null;
+    }
+    else{
       candidates = candidates.map(function(e){return String.fromCharCode(e);});
     }
   }else{
@@ -291,7 +300,7 @@ function searchWords( space ){
         candidates = quickSearch(indexString);
         for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
           var table_uint8view = new Uint8Array(buffer, i*5, 3);
-          if( key_uint8view[0] == table_uint8view[0] & 31 ){
+          if( key_uint8view[0] == (table_uint8view[0] & 31)){
               bufferIndex = i;
               break;
           }
@@ -302,7 +311,7 @@ function searchWords( space ){
         for(var i = bufferIndex; i < buffer.byteLength / 5; i++ ){
           var table_uint8view = new Uint8Array(buffer, i*5, 3);
           if( key_uint8view[0] == table_uint8view[0] &&
-              key_uint8view[1] == table_uint8view[1] & 3 ){
+              key_uint8view[1] == (table_uint8view[1] & 3)){
               bufferIndex = i;
               break;
           }
@@ -331,7 +340,7 @@ function searchWords( space ){
           var table_uint8view = new Uint8Array(buffer, i*5, 3);
           if( key_uint8view[0] == table_uint8view[0] &&
               key_uint8view[1] == table_uint8view[1] &&
-              key_uint8view[2] == table_uint8view[2] & 31){
+              key_uint8view[2] == (table_uint8view[2] & 31)){
               if(candidates.length < 10){
                 var uint16view = new Uint16Array(buffer.slice(i*5 + 3, i*5 + 5));
                 candidates.push(String.fromCharCode(uint16view[0]));
